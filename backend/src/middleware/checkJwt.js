@@ -15,13 +15,15 @@ export const checkJwt = (req, res, next) => {
         return;
     }
 
+    const { userId } = jwtPayload;
+
     // Issue a new token.
     const issued = Date.now();
     const tokenExpiration = +process.env.TOKEN_EXPIRATION ?? 12; // Expiration in hours. Defaults to 12.
     const expirationInMs = tokenExpiration*3600000;
     const expireTime = issued + expirationInMs;
     const expireLength = tokenExpiration + 'h';
-    const newToken = sign({ userId, editor }, process.env.TOKEN_KEY, {
+    const newToken = sign({ userId }, process.env.TOKEN_KEY, {
         expiresIn: expireLength
     });
     res.setHeader('issued', issued);

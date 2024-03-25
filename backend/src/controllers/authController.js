@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-const { sign, verify } = jwt;
+const { sign } = jwt;
 import bcryptjs from 'bcryptjs';
 const { compareSync: hashCompareSync, hash } = bcryptjs;
 
@@ -40,7 +40,7 @@ export default class AuthController {
         }
 
         const { username, password } = req.body;
-        hash(password, +process.env.HASH_SALT_ROUNDS, function(error, hash) {
+        hash(password, +process.env.HASH_SALT_ROUNDS, async function(error, hash) {
             if (error) {
                 console.log(error);
                 res.status(400).send();
@@ -48,20 +48,18 @@ export default class AuthController {
                 return;
             }
             const db = req.app.get('db');
-            (async () => {
-                try {
-                    let statement = await db.prepare('INSERT INTO users(username, password) VALUES(@username, @password) RETURNING id');
-                    const result = await statement.get({ '@username': username, '@password': hash })
+            try {
+                let statement = await db.prepare('INSERT INTO users(username, password) VALUES(@username, @password) RETURNING id');
+                const result = await statement.get({ '@username': username, '@password': hash })
 
-                    console.log('Created account with username: ' + username);
-                    res.status(201).send('Account created.');
-                    statusCode = 201;
-                } catch(error) {
-                    console.log(error)
-                    res.status(400).send('Error registering user.');
-                    return 400;
-                }
-            })()
+                console.log('Created account with username: ' + username);
+                res.status(201).send('Account created.');
+                statusCode = 201;
+            } catch(error) {
+                console.log(error)
+                res.status(400).send('Error registering user.');
+                return 400;
+            }
         });
 
         return statusCode;
@@ -100,9 +98,9 @@ export default class AuthController {
         const { username, password } = req.body;
         const db = req.app.get('db');
         try {
-            let statement = await db.prepare('SELECT password, id, editor FROM users WHERE username = @username');
+            let statement = await db.prepare('SELECT password, id FROM users WHERE username = @username');
             const result = await statement.get({ '@username': username })
-            if (result) {
+            if (result && result.length !== 0) {
                 // Compare hash and password
                 let hash = result['password'];
                 let compareResult = hashCompareSync(password, hash);
@@ -114,14 +112,13 @@ export default class AuthController {
 
                 // Sign JWT.
                 const userId = result['id'];
-                const editor = result['editor'];
                 const tokenExpiration = +process.env.TOKEN_EXPIRATION
                 const issued = Date.now();
                 const expirationInMs = +tokenExpiration*3600000;
                 const expireTime = issued + expirationInMs;
                 const expireLength = tokenExpiration + 'h';
                 const token = sign(
-                    { userId, editor },
+                    { userId },
                     process.env.TOKEN_KEY,
                     { expiresIn: expireLength}
                 )
