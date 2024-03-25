@@ -25,7 +25,6 @@ export default class AuthController {
 
         try {
             // Get input
-            console.log(req.body);
             const { username, password } = req.body;
         
             // Validate input
@@ -98,7 +97,7 @@ export default class AuthController {
         const { username, password } = req.body;
         const db = req.app.get('db');
         try {
-            let statement = await db.prepare('SELECT password, id FROM users WHERE username = @username');
+            let statement = await db.prepare('SELECT password, id, editor, admin FROM users WHERE username = @username');
             const result = await statement.get({ '@username': username })
             if (result && result.length !== 0) {
                 // Compare hash and password
@@ -123,17 +122,21 @@ export default class AuthController {
                     { expiresIn: expireLength}
                 )
 
+                const editor = result['editor'];
+                const admin = result['admin'];
+
                 // Send the token.
                 res.send({
                     issued: issued,
                     expires: expireTime,
                     token: token,
-                    editor: editor
+                    editor: editor,
+                    admin: admin
                 });
-                console.log('Sent token for: ' + username);
+                console.log('Sent token for: ' + username + ' ID #' + userId);
                 statusCode = 200;
             } else {
-                res.status(401).send('Email and password do not match or this account does not exist.');
+                res.status(401).send('Username and password do not match or this account does not exist.');
                 statusCode = 401;
                 return;
             }
