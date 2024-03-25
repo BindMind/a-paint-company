@@ -7,11 +7,11 @@ const app = express();
 import dotenv from 'dotenv';
 dotenv.config();
 import path from 'path';
-
 // Open the database.
-console.log('Connecting to database.');
+const dbPath = path.join(process.cwd()+'/database.db');
+console.log('Connecting to database at: ' + dbPath);
 const db = await open({
-  filename: path.join('..', 'database.db'),
+  filename: dbPath,
   driver: sqlite3.Database
 })
 app.set('db', db); // Store connection as app setting.
